@@ -2,6 +2,7 @@
 
 AI-assisted journaling platform for nature immersion sessions. Users write reflections after forest, ocean, or mountain sessions, and the system analyzes emotions using an LLM.
 
+**Bonus features implemented:** streaming LLM response, caching analysis results, rate limiting, Docker setup
 ---
 
 ## Tech Stack
