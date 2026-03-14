@@ -1,8 +1,8 @@
-# Architecture Notes — ArvyaX Journal
+# Architecture Notes - ArvyaX Journal
 
 ## 1. How would you scale this to 100k users?
 
-The current single-process Node/MongoDB setup hits limits somewhere around a few thousand concurrent users. Getting to 100k requires work at every layer.
+The current single process Node/MongoDB setup hits limits somewhere around a few thousand concurrent users. Getting to 100k requires work at every layer.
 
 **Database layer**
 
@@ -28,11 +28,11 @@ The current `userId` is a plain string from the client, obviously not production
 
 Several compounding strategies:
 
-**Model selection** - Claude Haiku is already used here because it costs roughly 25× less than Opus while being more than adequate for single-emotion classification and keyword extraction. Always start at the cheapest capable model.
+**Model selection** - Groq with llama-3.3-70b-versatile is used here because it is completely free on the free tier, fast, and more than adequate for single emotion classification and keyword extraction. Always start at the cheapest capable model.
 
 **Prompt compression** - The current prompt includes a full journal entry verbatim. Long entries inflate token counts. A simple preprocessing step (truncate to 500 characters, strip repeated whitespace) reduces input tokens with negligible impact on output quality for emotion analysis.
 
-**Caching** - Identical or near-identical texts should never hit the LLM twice. See section 3 below.
+**Caching** - Identical or near identical texts should never hit the LLM twice. See section 3 below.
 
 **Batching** - If the system ever needs to analyze historical entries in bulk (e.g., a data migration or retroactive analysis), batch requests during off peak hours and use asynchronous processing rather than real time calls.
 
