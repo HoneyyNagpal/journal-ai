@@ -9,7 +9,7 @@ AI-assisted journaling platform for nature immersion sessions. Users write refle
 | Layer    | Technology              |
 |----------|------------------------|
 | Backend  | Node.js + Express       |
-| Database | MongoDB (via Mongoose)  |
+| Database | SQLite (sql.js) |
 | LLM      | Groq (llama-3.3-70b-versatile) |
 | Frontend | React + Vite            |
 
@@ -20,8 +20,7 @@ AI-assisted journaling platform for nature immersion sessions. Users write refle
 ### Prerequisites
 
 - Node.js 18+
-- MongoDB running locally (`mongod`) or a MongoDB Atlas URI
-- An Groq API key (`ANTHROPIC_API_KEY`)
+- An Groq API key (`GROQ_API_KEY`)
 
 ---
 
@@ -30,7 +29,7 @@ AI-assisted journaling platform for nature immersion sessions. Users write refle
 ```bash
 cd backend
 cp .env.example .env
-# Fill in MONGO_URI and GROQ_API_KEY in .env
+# Fill in GROQ_API_KEY in .env
 npm install
 npm run dev
 ```
@@ -116,7 +115,6 @@ Aggregated insights across all entries for a user.
 | Variable           | Description                              | Default                          |
 |--------------------|------------------------------------------|----------------------------------|
 | `PORT`             | Backend port                             | `5001`                           |
-| `MONGO_URI`        | MongoDB connection string                | `mongodb://127.0.0.1:27017/arvyax` |
 | `GROQ_API_KEY`     | Groq API key (free at console.groq.com)  | -                               |
 | `FRONTEND_URL`     | CORS origin for the frontend             | `http://localhost:5173`          |
 
@@ -130,10 +128,10 @@ arvyax-journal/
 │   ├── server.js              # Express app, DB connect, middleware
 │   ├── routes/
 │   │   └── journal.js         # All /api/journal routes
-│   ├── models/
-│   │   └── Journal.js         # Mongoose schema
+│   ├── db/
+│   │   └── database.js         # sql.js
 │   ├── services/
-│   │   └── llmService.js      # Anthropic API + in-memory cache
+│   │   └── llmService.js      # Groq API 
 │   └── .env.example
 ├── frontend/
 │   ├── src/
@@ -153,4 +151,4 @@ arvyax-journal/
 - **Groq + llama-3.3-70b-versatile** is used for analysis - completely free tier, fast inference, and reliable enough for structured JSON output.
 - **In-memory cache** (`node-cache`) deduplicates identical text analyses within a 1 hour TTL, cutting LLM costs for repeated submissions.
 - **Rate limiting** is applied globally (100 req/15min) and specifically to `/analyze` (20 req/hour) to protect against abuse.
-- The `/analyze` endpoint accepts an optional `entryId` - when provided, the result is persisted directly to the journal entry in MongoDB, eliminating a separate PATCH call.
+- The `/analyze` endpoint accepts an optional `entryId` - when provided, the result is persisted directly to the journal entry in SQLite, eliminating a separate PATCH call.
