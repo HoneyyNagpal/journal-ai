@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: arvyax-backend
+    environment:
+      PORT: 5001
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      FRONTEND_URL: http://localhost
+    volumes:
+      - db_data:/app/data
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: arvyax-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
