@@ -113,23 +113,40 @@ function EntryItem({ entry, onAnalyzed }) {
   const [err, setErr] = useState(null);
 
   async function handleAnalyze() {
-    setAnalyzing(true);
-    setErr(null);
-    try {
-      const res = await fetch(`${API}/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: entry.text, entryId: entry._id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      onAnalyzed(entry._id, data);
-    } catch (e) {
-      setErr(e.message || "Analysis failed");
-    } finally {
-      setAnalyzing(false);
+  setAnalyzing(true);
+  setErr(null);
+  try {
+    const res = await fetch(`${API}/analyze/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: entry.text, entryId: entry.id }),
+    });
+
+    if (!res.ok) throw new Error("Analysis failed");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const lines = decoder.decode(value).split("\n").filter((l) => l.startsWith("data: "));
+      for (const line of lines) {
+        console.log("line received:", line);
+        try {
+          const parsed = JSON.parse(line.slice(6));
+          if (parsed.done && parsed.result) {
+            onAnalyzed(entry.id, parsed.result);
+          }
+        } catch { /* skip */ }
+      }
     }
+  } catch (e) {
+    setErr(e.message || "Analysis failed");
+  } finally {
+    setAnalyzing(false);
   }
+}
 
   const amb = AMBIENCES.find((a) => a.id === entry.ambience);
 
@@ -140,7 +157,7 @@ function EntryItem({ entry, onAnalyzed }) {
          <span className="ambience-tag">{entry.ambience}</span>
           <span className="entry-date">{formatDate(entry.createdAt)}</span>
         </div>
-        {!entry.analyzed && (
+        {(!entry.analyzed && !entry.analysis?.emotion) && (
           <button
             className="btn btn-analyze"
             onClick={handleAnalyze}
@@ -155,7 +172,7 @@ function EntryItem({ entry, onAnalyzed }) {
 
       {err && <div className="status-msg error">{err}</div>}
 
-      {entry.analyzed && entry.analysis?.emotion && (
+      {(entry.analyzed || entry.analysis?.emotion) && entry.analysis?.emotion && (
         <div className="analysis-result">
           <div className="analysis-emotion">"{entry.analysis.emotion}"</div>
           <div className="analysis-summary">{entry.analysis.summary}</div>
@@ -173,9 +190,10 @@ function EntryItem({ entry, onAnalyzed }) {
 // ─── Entries Panel ─────────────────────────────────────────────────────────
 function EntriesPanel({ entries, setEntries }) {
   function handleAnalyzed(id, result) {
+    console.log("handleAnalyzed called:", id, result);
     setEntries((prev) =>
       prev.map((e) =>
-        e._id === id
+       e.id === id
           ? { ...e, analyzed: true, analysis: result }
           : e
       )
@@ -303,6 +321,7 @@ export default function App() {
   }, [userId]);
 
   function handleEntryCreated(entry) {
+    console.log("new entry:", entry);
     setEntries((prev) => [entry, ...prev]);
     setInsightRefresh((n) => n + 1);
   }

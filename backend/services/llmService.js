@@ -16,19 +16,13 @@ function cacheKey(text) {
 }
 
 function buildPrompt(text) {
-  return `You are an emotion analyst for a nature-based wellness app. Analyze the journal entry below and respond ONLY with valid JSON — no explanation, no markdown, no code fences.
+  return `You are an emotion analyst. Analyze the journal entry and respond with ONLY a JSON object. No explanation, no markdown, no code fences, no extra text.
 
-Journal entry:
-"""
-${text}
-"""
 
-Return exactly this JSON shape:
-{
-  "emotion": "<single dominant emotion, e.g. calm, anxious, joyful, melancholic, energized, grateful, restless>",
-  "keywords": ["<3-5 relevant words>"],
-  "summary": "<one sentence summarizing the user's mental state>"
-}`;
+Journal entry: "${text}"
+
+Respond with exactly this, filling in the values:
+{"emotion":"calm","keywords":["word1","word2","word3"],"summary":"one sentence here"}`;
 }
 
 // Standard (non-streaming) analysis
@@ -58,7 +52,10 @@ async function analyzeEmotion(text) {
 
   const data = await response.json();
   const raw = data.choices?.[0]?.message?.content || "";
-  const result = JSON.parse(raw.replace(/```json|```/g, "").trim());
+  const match = raw.match(/\{[\s\S]*\}/);
+   if (!match) throw new Error(`Could not extract JSON from: ${raw}`);
+   const result = JSON.parse(match[0]); 
+  
 
   if (!result.emotion || !Array.isArray(result.keywords) || !result.summary)
     throw new Error(`Unexpected LLM response shape: ${raw}`);
@@ -129,7 +126,9 @@ async function analyzeEmotionStream(text, res) {
   }
 
   // Parse and cache the completed JSON
-  const result = JSON.parse(fullText.replace(/```json|```/g, "").trim());
+  const match = fullText.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error(`Could not extract JSON from: ${fullText}`);
+  const result = JSON.parse(match[0]);
   analysisCache.set(key, result);
 
   res.write(`data: ${JSON.stringify({ done: true, result })}\n\n`);

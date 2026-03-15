@@ -68,8 +68,9 @@ router.get("/insights/:userId", (req, res) => {
 
     const emotionCount = {}, ambienceCount = {}, keywordMap = {};
     entries.forEach((e) => {
+      console.log("entry:", e.analyzed, e.emotion, e.keywords);
       ambienceCount[e.ambience] = (ambienceCount[e.ambience] || 0) + 1;
-      if (e.analyzed && e.emotion) {
+      if ((e.analyzed === 1 || e.analyzed === true) && e.emotion) {
         const em = e.emotion.toLowerCase();
         emotionCount[em] = (emotionCount[em] || 0) + 1;
         if (e.keywords)
@@ -109,6 +110,7 @@ router.get("/:userId", (req, res) => {
 // POST /api/journal/analyze
 router.post("/analyze", async (req, res) => {
   const { text, entryId } = req.body;
+  console.log("analyze called with entryId:", entryId);
   if (!text || text.trim().length < 5)
     return res.status(400).json({ error: "text is required (min 5 characters)." });
   try {
@@ -126,25 +128,31 @@ router.post("/analyze", async (req, res) => {
   }
 });
 
-module.exports = router;
 
 // POST /api/journal/analyze/stream — SSE streaming version
 const { analyzeEmotionStream } = require("../services/llmService");
 
 router.post("/analyze/stream", async (req, res) => {
   const { text, entryId } = req.body;
+  console.log("stream entryId:", entryId, "text length:", text?.length);
   if (!text || text.trim().length < 5)
     return res.status(400).json({ error: "text is required (min 5 characters)." });
   try {
-    const result = await analyzeEmotionStream(text, res);
+    const result = await analyzeEmotion(text);
     if (entryId && result) {
       run(
         "UPDATE journals SET emotion=?, keywords=?, summary=?, analyzed=1, updatedAt=? WHERE id=?",
         [result.emotion, JSON.stringify(result.keywords), result.summary, new Date().toISOString(), entryId]
       );
+      console.log("updated entry:", entryId, result.emotion);
     }
+    // Send as SSE so frontend code doesn't need to change
+    res.setHeader("Content-Type", "text/event-stream");
+    res.write(`data: ${JSON.stringify({ done: true, result })}\n\n`);
+    res.end();
   } catch (err) {
     console.error(err);
     if (!res.headersSent) res.status(500).json({ error: err.message });
   }
 });
+module.exports = router;
