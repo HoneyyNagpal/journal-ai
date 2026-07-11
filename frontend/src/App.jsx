@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API = "/api/journal";
+const API = `${import.meta.env.VITE_API_URL || ""}/api/journal`;
 
 const AMBIENCES = [
   { id: "forest", label: "Forest", em: "🌲" },
